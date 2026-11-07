@@ -46,6 +46,8 @@ STEPS = [
     ("command", "투수별 제구 오차 추정 + 검증 (사례 7)", [["build_command.py"]], "val_command_summary.csv"),
     ("command_bt", "제구 가정 백테스트 (사례 7)", [["backtest_command.py"], ["backtest_command.py", "--report"]],
      "val_command_backtest.csv"),
+    ("hier", "계층 베이즈: 2024 학습 → 2025 검증 → 최종 (사례 8)", [["build_hier.py", "fit"], ["build_hier.py", "drift"],
+     ["build_hier.py", "val"], ["build_hier.py", "save"]], "hier_model.pkl"),
     ("scouting", "스카우팅 리포트: 팀별 라인업·선발 표 + 샘플 리포트", [["scouting.py", "--teams"],
      ["scouting.py", "--opp", "NYY", "--us", "PIT", "--out", "docs/sample_scouting_PIT_vs_NYY.html"]],
      "docs/sample_scouting_PIT_vs_NYY.html"),

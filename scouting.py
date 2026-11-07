@@ -91,6 +91,30 @@ def load_teams(M):
     return T
 
 
+HB_Z = 1.645     # 90% 구간
+
+
+def load_hier(path="hier_model.pkl"):
+    """계층 베이즈 타자×구종 계열 헛스윙 성향 (build_hier.py). 2025 검증: 90% 구간 포함률 86% (점 추정+표본 오차만 쓰면 71%)"""
+    if not os.path.exists(path):
+        return None
+    H = pickle.load(open(path, "rb"))["whiff"]
+    t = H["table"].set_index(["batter", "grp"])
+    return {"t": t, "lg": H["league_obs"]}
+
+
+def hier_whiff(HB, bid):
+    """{계열: (헛스윙률, 90% 하한, 상한, 리그)} — 이 타자가 실제로 스윙한 공에서의 헛스윙률(스윙했을 때)과 그 불확실성"""
+    if HB is None:
+        return {}
+    out = {}
+    for g, name in enumerate(("fastball", "breaking", "offspeed")):
+        if (bid, g) in HB["t"].index:
+            r = HB["t"].loc[(bid, g)]
+            out[name] = (float(r["r"]), float(r["lo"]), float(r["hi"]), float(HB["lg"][g]))
+    return out
+
+
 def load_command(path="command.pkl"):
     """투수별 제구 오차 추정 (build_command.py). 추천 계산엔 쓰지 않고 투수 정보로만 보여 줌 (백테스트에서 이득 없음)"""
     if not os.path.exists(path):
@@ -198,6 +222,7 @@ def build(M, S, Bm, BS, EMB, opp, us, lineup, starters, beta=GM.DEFAULT_BETA, lo
     out = {"opp": opp, "us": us, "beta": beta, "batters": [], "pitchers": [],
            "made": time.strftime("%Y-%m-%d")}
     CMD = load_command()
+    HB = load_hier()
     for pid in starters:
         a = M["arsenal"][M["arsenal"]["pitcher"] == pid].sort_values("usage", ascending=False)
         out["pitchers"].append({"id": pid, "name": pnames[pid], "hand": a["p_throws"].iloc[0], "cmd": command_text(CMD, pid),
@@ -208,7 +233,7 @@ def build(M, S, Bm, BS, EMB, opp, us, lineup, starters, beta=GM.DEFAULT_BETA, lo
         name = M["batter_names"].get(bid, str(bid))
         stand_mode = M["batter_stand"].get(bid, "R")
         b = {"slot": slot, "id": bid, "name": name, "games": games, "stand": stand_mode,
-             "profile": batter_profile(M, bid), "similar": similar(EMB, M, bid)}
+             "profile": batter_profile(M, bid), "similar": similar(EMB, M, bid), "hb": hier_whiff(HB, bid)}
         b["arch"], b["bs_pct"] = archetype(BS, bid)
         b["tips"], b["tips_fallback"] = defense_tips(M, Bm, bid, stand_mode if stand_mode in "RL" else "R")
         b["plans"] = {}
@@ -225,10 +250,19 @@ def build(M, S, Bm, BS, EMB, opp, us, lineup, starters, beta=GM.DEFAULT_BETA, lo
 def key_points(b):
     p, pts = b["profile"], []
     grp = p["group"]
-    weak = max(grp, key=lambda g: grp[g]["whiff"] - grp[g]["lg_whiff"])
-    w = grp[weak]
-    if w["whiff"] - w["lg_whiff"] >= 0.03:
-        pts.append(f"{GROUP_KO[weak]}에 헛스윙 {w['whiff']:.0%} (리그 {w['lg_whiff']:.0%})")
+    hb = b.get("hb") or {}
+    if hb:                                   # 계층 베이즈: 90% 구간이 리그 평균을 벗어난 것만 '확실한' 약점·강점
+        sure = {g: v for g, v in hb.items() if v[1] > v[3] or v[2] < v[3]}
+        if sure:
+            g = max(sure, key=lambda k: abs(sure[k][0] - sure[k][3]))
+            r, lo, hi, lg = sure[g]
+            word = "헛스윙 많음" if lo > lg else "잘 안 헛침"
+            pts.append(f"{GROUP_KO[g]} {word}: {r:.0%} [90% 구간 {lo:.0%}~{hi:.0%}] (리그 {lg:.0%})")
+    else:
+        weak = max(grp, key=lambda g: grp[g]["whiff"] - grp[g]["lg_whiff"])
+        w = grp[weak]
+        if w["whiff"] - w["lg_whiff"] >= 0.03:
+            pts.append(f"{GROUP_KO[weak]}에 헛스윙 {w['whiff']:.0%} (리그 {w['lg_whiff']:.0%})")
     chase = max(grp, key=lambda g: grp[g]["chase"] - grp[g]["lg_chase"])
     c = grp[chase]
     if c["chase"] - c["lg_chase"] >= 0.03:
@@ -374,6 +408,8 @@ def render(rep):
       <li><b>목표 코스</b>는 구종별로 기대 실점이 가장 낮은 곳이다 (제구 오차 0.5피트 가정). 2025 백테스트에서 추천 코스 근처로 간 공은
           100구당 2.6점 덜 내줬다.</li>
       <li><b>헛스윙 %</b>는 그 코스에서 배트를 냈을 때 헛칠 확률이다 (LightGBM + 선수 임베딩 신경망 평균).</li>
+      <li><b>[90% 구간]</b>은 타자 성향이 얼마나 확실한지다 (계층 베이즈 모델). 2025 검증에서 실제 값이 구간 안에 86% 들어갔다.
+          구간이 리그 평균을 벗어난 것만 '핵심'에 적었다.</li>
     </ul>
   </div>
   <div class="foot">데이터: MLB Statcast 2024 (Baseball Savant). 모델은 2024로 학습하고 2025로 검증했다. 구종 '순위'는 검증되지 않아 비율로만 제시한다.
@@ -384,8 +420,11 @@ def render(rep):
         p = b["profile"]
         arch = (f'<span class="tag">{esc(b["arch"])} · 배트 스피드 상위 {100 - b["bs_pct"]:.0f}%</span>'
                 if b["arch"] else "")
+        hb = b.get("hb") or {}
+        wcell = lambda g, v: (f'{hb[g][0]:.0%} <span class="sub">[{hb[g][1]:.0%}~{hb[g][2]:.0%}] ({hb[g][3]:.0%})</span>' if g in hb
+                              else f'{v["whiff"]:.0%} <span class="sub">({v["lg_whiff"]:.0%})</span>')
         grp_rows = "".join(
-            f'<tr><td>{GROUP_KO[g]}</td><td class="num">{v["whiff"]:.0%} <span class="sub">({v["lg_whiff"]:.0%})</span></td>'
+            f'<tr><td>{GROUP_KO[g]}</td><td class="num">{wcell(g, v)}</td>'
             f'<td class="num">{v["chase"]:.0%} <span class="sub">({v["lg_chase"]:.0%})</span></td>'
             f'<td class="num">{v["xwoba"]:.3f} <span class="sub">({v["lg_xwoba"]:.3f})</span></td></tr>'
             for g, v in p["group"].items())
@@ -417,7 +456,7 @@ def render(rep):
     <div>{zone_html(p['grid'], b['stand'] if b['stand'] in 'RL' else 'R')}</div>
     <div>
       <b>핵심</b><ul>{kp}</ul>
-      <table style="margin-top:6px"><tr><th>구종 계열</th><th class="num">헛스윙 (리그)</th><th class="num">존 밖 스윙 (리그)</th>
+      <table style="margin-top:6px"><tr><th>구종 계열</th><th class="num">헛스윙 [90% 구간] (리그)</th><th class="num">존 밖 스윙 (리그)</th>
         <th class="num">타구 xwOBA (리그)</th></tr>{grp_rows}</table>
     </div>
   </div>

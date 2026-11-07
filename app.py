@@ -292,6 +292,12 @@ def header(title, pname, bname, stand, balls, strikes, outs, sit, extra_txt=""):
 
 
 # ---------------------------------------------------------------- 타자 / 투수 공통 탭
+@st.cache_resource
+def load_hier():
+    import scouting as SC
+    return SC.load_hier("hier_model.pkl")
+
+
 def batter_tab(bid, stand):
     prof = M["profile"]
     cell = prof["cell"][prof["cell"]["batter"] == bid].set_index("cell")["b_cell_rv"]
@@ -334,15 +340,20 @@ def batter_tab(bid, stand):
             ("밀어친 타구", f"{val('b_oppo'):.0%}", f"{d['b_oppo']:.0%}"),
         ], columns=["항목", "이 타자", "리그 평균"]), hide_index=True, width="stretch")
         gp = prof["group"][prof["group"]["batter"] == bid].set_index("group")
+        import scouting as SC
+        HBW = SC.hier_whiff(load_hier(), bid)
         rows = []
         for g in ["fastball", "breaking", "offspeed"]:
             def gv(c):
                 v = gp[c].get(g, np.nan) if c in gp.columns else np.nan
                 return d[c][g] if pd.isna(v) else v
+            hb = HBW.get(g)
             rows.append({"구종 계열": GROUP_KO[g], "헛스윙률": f"{gv('b_whiff'):.0%}",
+                         "헛스윙 [90% 구간] (계층 베이즈)": f"{hb[0]:.0%} [{hb[1]:.0%}~{hb[2]:.0%}] (리그 {hb[3]:.0%})" if hb else "—",
                          "추격률": f"{gv('b_chase'):.0%}", "맞았을 때 타구 품질(xwOBA)": f"{gv('b_xwoba'):.3f}"})
         st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
-        st.caption("추격률 = 존 밖 공에 배트를 낸 비율. 표본이 적은 타자는 리그 평균 쪽으로 보정된 값이에요.")
+        st.caption("추격률 = 존 밖 공에 배트를 낸 비율. 표본이 적은 타자는 리그 평균 쪽으로 보정된 값이에요. "
+                   "[90% 구간]은 계층 베이즈 모델의 불확실성이에요 (2024·2025) — 2025 검증에서 실제 값이 구간에 86% 들어갔어요.")
 
 
 def pitcher_tab(pid, pname):

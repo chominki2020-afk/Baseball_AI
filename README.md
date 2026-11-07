@@ -15,10 +15,11 @@
 | 콴 같은 컨택 타자도 어택 앵글을 올려야 하나? | **아니다.** 파워형은 타구 질 +11.8/°, 컨택형은 스윙당 +0.4 [−1.4, +1.9]. 유형별 규칙으로 바꿈 |
 | 이걸 구단이 실제로 쓰는 형태로 만들 수 있나? | 상대 타선 9명 × 우리 선발 3명 **시리즈 스카우팅 리포트**를 자동 생성 ([샘플 PDF](docs/sample_scouting_PIT_vs_NYY.pdf)). 검증된 코스 추천만 싣고, 검증 안 된 구종 순위는 게임이론 비율로 대체 |
 | 투수마다 제구가 다르게 반영되나? | 의도가 거의 하나인 3볼·2-0 패스트볼로 투수별 제구 오차를 측정: 해마다 이어지고(r 0.33) 다음 시즌 볼넷률을 예측(r 0.37). 하지만 추천에 넣어도 백테스트에서 이득이 없어 **투수 정보로만 표시** |
+| "이 타자 약점"이 얼마나 확실한가? | 계층 베이즈 모델로 타자×구종 계열 헛스윙 성향에 90% 구간: 2025 실제 값이 86% 구간 안 (점 추정만이면 71%). 헛스윙 예측도 단일 모델 최고 (AUC 0.7928). 리포트엔 구간이 리그를 벗어난 **확실한 특징만** |
 | MLB 투수는 게임이론(미니맥스)대로 던지나? | 리그 전체는 균형에 가깝다. **0-2 오프스피드만** 두 시즌 연속 패스트볼보다 0.74~1.07점 덜 내줌 |
 | 선수 임베딩(딥러닝)이 도움이 되나? | 헛스윙 AUC 0.787 → 0.792, LightGBM과 평균하면 0.797 → 앱의 스윙·헛스윙 확률에 적용. 하지만 **실점 순위**에 섞었을 때는 백테스트 정면 비교에서 차이가 없어 보류 |
 
-자세한 과정(무엇이 틀렸고 어떻게 알았는지)은 [문제 해결 사례집](docs/CASE_STUDY.md)에 있다 (사례 7개).
+자세한 과정(무엇이 틀렸고 어떻게 알았는지)은 [문제 해결 사례집](docs/CASE_STUDY.md)에 있다 (사례 8개).
 
 ## 시스템 구조
 
@@ -101,7 +102,7 @@ python pipeline.py
 | --- | --- |
 | 앱 | `app.py` (화면), `analyst.py` (AI 분석관), `scouting.py` (스카우팅 리포트), `recommend.py`, `strategy.py`, `trajectory.py`, `animation.py`, `mechanics.py`, `batter_mech.py`, `embed.py`, `game.py` |
 | 학습 | `stuff_plus.py` (데이터 받기 + Stuff+), `build_*.py` (모델별) |
-| 검증 | `validate_release.py`, `validate_personal.py`, `backtest.py`, `backtest_ensemble.py`, `build_command.py`, `backtest_command.py`, `test_high_fastball.py`, `build_minimax.py` |
+| 검증 | `validate_release.py`, `validate_personal.py`, `backtest.py`, `backtest_ensemble.py`, `build_command.py`, `backtest_command.py`, `build_hier.py`, `test_high_fastball.py`, `build_minimax.py` |
 | 검증 결과 | `val_*.csv` (앱의 "근거" 화면이 읽음), `results/*.txt` |
 | 순서 | `pipeline.py` |
 
