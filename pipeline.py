@@ -41,6 +41,8 @@ STEPS = [
      "game_mix.pkl"),
     ("minimax", "미니맥스 검증 (사례 4)", [["build_minimax.py"]], "minimax.pkl"),
     ("backtest", "코스 추천 2025 백테스트", [["backtest.py", "--loop"], ["backtest.py", "--report"]], "results/backtest_2025.txt"),
+    ("ensemble", "앙상블(신경망+LightGBM) 추천 백테스트", [["backtest_ensemble.py"], ["backtest_ensemble.py", "--report"]],
+     "val_ensemble_summary.csv"),
     ("high_fastball", "높은 패스트볼 × 타자 유형 검증", [["test_high_fastball.py", "--data", D25, "--split", "2025-07-01"]],
      "results/high_fastball_2025.txt"),
 ]

@@ -67,6 +67,26 @@ def parse_spot(text):
     return x, z
 
 
+def load_embed(path="embed_model.npz"):
+    """선수 임베딩 신경망 가중치 (build_embed.py save). 없으면 None → LightGBM만 사용"""
+    if not os.path.exists(path):
+        return None
+    z = np.load(path, allow_pickle=False)
+    return {k: z[k] for k in ("eb", "ep", "proj_w", "proj_b", "f0_w", "f0_b", "f2_w", "f2_b", "g0_w", "g0_b",
+                              "g2_w", "g2_b", "mu", "sd", "rv_sd", "b_ids", "b_idx", "p_ids", "p_idx")}
+
+
+def embed_swing(W, g, pitcher_id, batter_id):
+    """신경망+임베딩의 스윙·헛스윙 확률. 처음 보는 선수는 임베딩 0 (= 리그 평균)"""
+    from build_embed import np_forward, prep
+    X, _ = prep(g, {"mu": W["mu"], "sd": W["sd"]})
+    bi = dict(zip(W["b_ids"].tolist(), W["b_idx"].tolist())).get(int(batter_id), 0)
+    pi = dict(zip(W["p_ids"].tolist(), W["p_idx"].tolist())).get(int(pitcher_id), 0)
+    n = len(g)
+    ps, pw, _ = np_forward(W, X, np.full(n, bi), np.full(n, pi))
+    return ps, pw
+
+
 def simulate(M, pitcher_id, batter_id, balls, strikes, stand, command_ft,
              prev=None, S=None, sit=(0, 0, 0, 0), n_noise=40, seed=0, extra=None):
     rng = np.random.default_rng(seed)
@@ -138,6 +158,10 @@ def simulate(M, pitcher_id, batter_id, balls, strikes, stand, command_ft,
         if S is not None:                     # 스윙/헛스윙 모델이 있으면 같이 계산
             g["p_swing"] = S["swing"].predict_proba(g[S["features"]])[:, 1]
             g["p_whiff"] = S["whiff"].predict_proba(g[S["features"]])[:, 1]
+            if S.get("embed") is not None:    # 신경망+임베딩과 평균 (2025 검증: 헛스윙 AUC 0.787 → 0.797)
+                ps, pw = embed_swing(S["embed"], g, pitcher_id, batter_id)
+                g["p_swing"] = (g["p_swing"] + ps) / 2
+                g["p_whiff"] = (g["p_whiff"] + pw) / 2
             cols += ["p_swing", "p_whiff"]
         res = g.groupby(["tx", "tz"])[cols].mean().reset_index()
         res["pitch_type"], res["usage"], res["velo"] = p["pitch_type"], p["usage"], p["release_speed"]

@@ -97,6 +97,8 @@ def load_all():
 
 D = load_all()
 M, S = D["M"], D["S"]
+if S is not None:                          # 스윙·헛스윙 = LightGBM과 신경망+임베딩의 평균 (2025 검증에서 가장 좋았던 조합)
+    S = dict(S, embed=R.load_embed("embed_model.npz"))
 ars_all = M["arsenal"]
 pitchers = (ars_all.groupby(["pitcher", "player_name"])["n"].sum()
             .reset_index().sort_values("player_name"))

@@ -9,12 +9,12 @@
 
 | 질문 | 답 (2025 검증 결과) |
 | --- | --- |
-| 추천 코스대로 던지면 실제로 덜 맞나? | 추천 코스 0.5피트 이내 **−3.26점/100구**, 1.5피트 넘게 벗어나면 **+2.43**. 평소와 다르게 추천 쪽으로 간 공은 평소대로 간 공보다 −4.04 [−6.95, −1.01] |
+| 추천 코스대로 던지면 실제로 덜 맞나? | 추천 코스 0.5피트 이내 **−2.58점/100구**, 1.5피트 넘게 벗어나면 **+2.27**. 평소와 다르게 추천 쪽으로 간 공은 평소대로 간 공보다 −4.27 [−7.10, −1.57] |
 | 투수 릴리스 위치를 바꾸라는 추천은 맞나? | **아니었다.** 릴리스를 바꾼 365 사례에서 예측력 r = −0.06. 버리고 "공 모양 목표"(r = 0.29)로 대체 |
 | 타자 스윙 모델은 정말 스윙을 이해하나? | 첫 모델은 **선수를 외우고 있었다.** 바꾸면 "이 선수"만 남는 구조를 찾아내 다시 설계 |
 | 콴 같은 컨택 타자도 어택 앵글을 올려야 하나? | **아니다.** 파워형은 타구 질 +11.8/°, 컨택형은 스윙당 +0.4 [−1.4, +1.9]. 유형별 규칙으로 바꿈 |
 | MLB 투수는 게임이론(미니맥스)대로 던지나? | 리그 전체는 균형에 가깝다. **0-2 오프스피드만** 두 시즌 연속 패스트볼보다 0.74~1.07점 덜 내줌 |
-| 선수 임베딩(딥러닝)이 도움이 되나? | 헛스윙 AUC 0.787 → 0.792, LightGBM과 평균하면 0.797. 단 신인에게는 이득 없음 |
+| 선수 임베딩(딥러닝)이 도움이 되나? | 헛스윙 AUC 0.787 → 0.792, LightGBM과 평균하면 0.797 → 앱의 스윙·헛스윙 확률에 적용. 하지만 **실점 순위**에 섞었을 때는 백테스트 정면 비교에서 차이가 없어 보류 |
 
 자세한 과정(무엇이 틀렸고 어떻게 알았는지)은 [문제 해결 사례집](docs/CASE_STUDY.md)에 있다.
 
@@ -73,7 +73,7 @@ python pipeline.py
 ```
 
 - AI 분석관을 쓰려면 `secrets.toml.example`을 `.streamlit/secrets.toml`로 복사하고 Anthropic API 키를 넣는다. 이 파일은 `.gitignore`에 들어 있다.
-- 화면 테스트: `python tests/test_app_mech.py` (Streamlit AppTest)
+- 화면 테스트: `python tests/test_app_defense.py` 등 (Streamlit AppTest)
 
 ## 파일 지도
 
@@ -83,7 +83,7 @@ python pipeline.py
 | --- | --- |
 | 앱 | `app.py` (화면), `analyst.py` (AI 분석관), `recommend.py`, `strategy.py`, `trajectory.py`, `animation.py`, `mechanics.py`, `batter_mech.py`, `embed.py`, `game.py` |
 | 학습 | `stuff_plus.py` (데이터 받기 + Stuff+), `build_*.py` (모델별) |
-| 검증 | `validate_release.py`, `validate_personal.py`, `backtest.py`, `test_high_fastball.py`, `build_minimax.py` |
+| 검증 | `validate_release.py`, `validate_personal.py`, `backtest.py`, `backtest_ensemble.py`, `test_high_fastball.py`, `build_minimax.py` |
 | 검증 결과 | `val_*.csv` (앱의 "근거" 화면이 읽음), `results/*.txt` |
 | 순서 | `pipeline.py` |
 
