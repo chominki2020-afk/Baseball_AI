@@ -91,6 +91,23 @@ def load_teams(M):
     return T
 
 
+def load_command(path="command.pkl"):
+    """투수별 제구 오차 추정 (build_command.py). 추천 계산엔 쓰지 않고 투수 정보로만 보여 줌 (백테스트에서 이득 없음)"""
+    if not os.path.exists(path):
+        return None
+    C = pickle.load(open(path, "rb"))
+    t = C["table"]
+    return {"c": t["c_s"].to_dict(), "w": t["w"].to_dict(), "all": t["c_s"].to_numpy(), "mean": C["c_all_mean"]}
+
+
+def command_text(CMD, pid):
+    if CMD is None or pid not in CMD["c"]:
+        return "—"
+    c = CMD["c"][pid]
+    better = (CMD["all"] > c).mean()               # 이 투수보다 제구 오차가 큰 투수 비율
+    return f"{c:.2f}피트 (제구 상위 {100 - better * 100:.0f}%)"
+
+
 # ------------------------------------------------------------------ 타자 성향
 def batter_profile(M, bid):
     prof, d = M["profile"], M["profile"]["defaults"]
@@ -180,9 +197,10 @@ def build(M, S, Bm, BS, EMB, opp, us, lineup, starters, beta=GM.DEFAULT_BETA, lo
     pnames = dict(zip(M["arsenal"]["pitcher"], M["arsenal"]["player_name"]))
     out = {"opp": opp, "us": us, "beta": beta, "batters": [], "pitchers": [],
            "made": time.strftime("%Y-%m-%d")}
+    CMD = load_command()
     for pid in starters:
         a = M["arsenal"][M["arsenal"]["pitcher"] == pid].sort_values("usage", ascending=False)
-        out["pitchers"].append({"id": pid, "name": pnames[pid], "hand": a["p_throws"].iloc[0],
+        out["pitchers"].append({"id": pid, "name": pnames[pid], "hand": a["p_throws"].iloc[0], "cmd": command_text(CMD, pid),
                                 "arsenal": [(t, u, v) for t, u, v in zip(a["pitch_type"], a["usage"], a["release_speed"])
                                             if u >= 0.03]})
     t0 = time.time()
@@ -337,14 +355,16 @@ def render(rep):
         ars = " ".join(f'<span class="pitch" style="background:{COLOR.get(t, "#888")}"></span>{esc(PITCH_KO.get(t, t))} '
                        f'{u:.0%} ({v:.0f})' for t, u, v in p["arsenal"])
         pit_rows.append(f'<tr><td>{i}차전</td><td><b>{esc(flipname(p["name"]))}</b> ({"좌" if p["hand"] == "L" else "우"}투)</td>'
-                        f'<td>{ars}</td></tr>')
+                        f'<td>{ars}</td><td>{esc(p.get("cmd", "—"))}</td></tr>')
     pages.append(f"""
 <div class="page">
   <div class="sub">시리즈 스카우팅 리포트 · {esc(rep['made'])} 생성</div>
   <h1>{esc(us)} 투수진 vs {esc(opp)} 타선</h1>
   <div class="sub">상대 타선 = 2024 시즌 가장 자주 나온 선발 라인업 · 우리 선발 = 2024 선발 등판 상위 {len(rep['pitchers'])}명</div>
   <h3>우리 선발</h3>
-  <table><tr><th>경기</th><th>투수</th><th>구종 (구사율, 평균 구속 mph)</th></tr>{''.join(pit_rows)}</table>
+  <table><tr><th>경기</th><th>투수</th><th>구종 (구사율, 평균 구속 mph)</th><th>제구 오차 (추정)</th></tr>{''.join(pit_rows)}</table>
+  <div class="sub">제구 오차 = 의도가 거의 하나인 3볼·2-0 패스트볼이 흩어진 정도 (2024·2025, 리그 평균 쪽으로 보정). 해마다 이어지는 특성이고(r 0.33)
+    다음 시즌 볼넷률과 관련 있다(r 0.37). 추천 계산에는 리그 공통 가정을 쓴다 — 투수별 값을 넣어도 백테스트에서 추천이 나아지지 않았다.</div>
   <h3>상대 타선 한눈에</h3>
   <table><tr><th class="num">타순</th><th>타자</th><th>타석</th><th>가장 두드러진 점</th></tr>{''.join(lineup_rows)}</table>
   <div class="box"><b>읽는 법</b>

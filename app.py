@@ -357,6 +357,12 @@ def pitcher_tab(pid, pname):
         "수직 무브먼트(in)": a["pfx_z"].round(1).values,
     }), hide_index=True, width="stretch")
     st.caption("무브먼트는 투수 팔 방향 기준으로 통일 (+ = 팔 쪽으로 휨 / 덜 떨어짐). 구사율 4% 미만 구종은 제외.")
+    import scouting as SC
+    CMD = SC.load_command()
+    if CMD is not None and pid in CMD["c"]:
+        st.metric("제구 오차 (추정)", SC.command_text(CMD, pid),
+                  help="3볼·2-0 카운트 패스트볼(의도가 거의 '스트라이크 넣기' 하나)이 흩어진 정도. 해마다 이어지고(r 0.33) 다음 시즌 볼넷률과 "
+                       "관련 있음(r 0.37). 추천 계산엔 리그 공통 가정(사이드바 '제구 오차')을 써요 — 투수별 값을 넣어도 백테스트에서 나아지지 않았어요.")
 
 
 def spray_fan(summary, league, stand):
@@ -1627,8 +1633,11 @@ def rep_page():
     if got and got[0] == key:
         st.download_button("⬇️ 리포트 내려받기 (HTML · 브라우저에서 인쇄 → PDF 저장)", got[1].encode("utf-8"),
                            file_name=f"scouting_{us}_vs_{opp}.html", mime="text/html")
-        import streamlit.components.v1 as components
-        components.html(got[1], height=900, scrolling=True)
+        if hasattr(st, "iframe"):          # Streamlit 1.5x+ (리포트는 이 코드가 만든 HTML이라 그대로 보여 줘도 됨)
+            st.iframe(got[1], height=900)
+        else:
+            import streamlit.components.v1 as components
+            components.html(got[1], height=900, scrolling=True)
     st.info("근거: 코스 추천은 2025 백테스트로 검증됐고(추천 코스 근처로 간 공 100구당 −2.6점), 구종 '순위'는 검증되지 않아 "
             "게임이론 비율로만 보여 줘요. 스윙·헛스윙 확률은 LightGBM + 선수 임베딩 신경망 평균이에요.")
 
