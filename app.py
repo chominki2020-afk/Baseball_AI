@@ -1585,9 +1585,57 @@ def ai_page():
     st.session_state["ai_view"].append({"role": "assistant", "text": text, "log": log})
 
 
+# ---------------------------------------------------------------- 📋 스카우팅 리포트
+REPM = "📋 스카우팅 리포트"
+
+
+@st.cache_resource
+def load_teams():
+    import scouting as SC
+    return SC.load_teams(M)
+
+
+def rep_page():
+    import scouting as SC
+    T = load_teams()
+    teams = sorted(T)
+    pn = dict(zip(ars_all["pitcher"], ars_all["player_name"]))
+    with st.sidebar:
+        st.header("📋 시리즈 스카우팅 리포트")
+        opp = st.selectbox("상대 팀 (타선)", teams, index=teams.index("NYY") if "NYY" in teams else 0, key="r_opp")
+        us = st.selectbox("우리 팀 (선발)", teams, index=teams.index("PIT") if "PIT" in teams else 0, key="r_us")
+        default = [pn[p] for p in T[us]["starters"] if p in pn]
+        picks = st.multiselect("선발 투수 (바꿔도 됨)", sorted(pitcher_names), default=default, max_selections=4, key="r_p")
+    lineup = T[opp]["lineup"]
+    st.markdown(f"## 📋 {us} 투수진 vs {opp} 타선")
+    st.caption("상대 타선 = 2024 시즌 가장 자주 나온 선발 라인업. 타자마다 카운트(초구·유리·불리·풀카운트) × 우리 선발별로 "
+               "게임이론 구종 비율과 구종별 목표 코스, 수비 위치를 한 페이지씩 정리해요. 인쇄하거나 PDF로 저장할 수 있어요.")
+    st.dataframe(pd.DataFrame([{"타순": s, "타자": SC.flipname(M["batter_names"].get(b, b)), "선발 경기": g} for s, b, g in lineup]),
+                 hide_index=True, width="stretch")
+    key = (opp, us, tuple(picks))
+    if st.button(f"리포트 만들기 (타자 {len(lineup)}명 × 투수 {len(picks)}명, 1~2분)", type="primary", disabled=not picks):
+        bar = st.progress(0.0, text="계산 중...")
+        done = []
+
+        def log(msg):
+            done.append(msg)
+            bar.progress(min(len(done) / max(len(lineup), 1), 1.0), text=msg)
+        rep = SC.build(M, S, D["B"], load_bat(), load_emb(), opp, us, lineup, [pitcher_names[n] for n in picks], log=log)
+        st.session_state["rep_html"] = (key, SC.render(rep))
+        bar.empty()
+    got = st.session_state.get("rep_html")
+    if got and got[0] == key:
+        st.download_button("⬇️ 리포트 내려받기 (HTML · 브라우저에서 인쇄 → PDF 저장)", got[1].encode("utf-8"),
+                           file_name=f"scouting_{us}_vs_{opp}.html", mime="text/html")
+        import streamlit.components.v1 as components
+        components.html(got[1], height=900, scrolling=True)
+    st.info("근거: 코스 추천은 2025 백테스트로 검증됐고(추천 코스 근처로 간 공 100구당 −2.6점), 구종 '순위'는 검증되지 않아 "
+            "게임이론 비율로만 보여 줘요. 스윙·헛스윙 확률은 LightGBM + 선수 임베딩 신경망 평균이에요.")
+
+
 # ---------------------------------------------------------------- 사이드바
 with st.sidebar:
-    mode = st.radio("모드", [AIM, "🛡️ 수비팀", "⚔️ 공격팀", GAMEM, "🎯 투구 궤적", MECH, BAT, EMBM], index=1, horizontal=True,
+    mode = st.radio("모드", [AIM, "🛡️ 수비팀", "⚔️ 공격팀", GAMEM, "🎯 투구 궤적", MECH, BAT, EMBM, REPM], index=1, horizontal=True,
                     label_visibility="collapsed")
 
 if mode == MECH:
@@ -1604,6 +1652,9 @@ if mode == EMBM:
     st.stop()
 if mode == GAMEM:
     game_page()
+    st.stop()
+if mode == REPM:
+    rep_page()
     st.stop()
 
 with st.sidebar:

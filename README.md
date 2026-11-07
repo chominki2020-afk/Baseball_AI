@@ -13,10 +13,11 @@
 | 투수 릴리스 위치를 바꾸라는 추천은 맞나? | **아니었다.** 릴리스를 바꾼 365 사례에서 예측력 r = −0.06. 버리고 "공 모양 목표"(r = 0.29)로 대체 |
 | 타자 스윙 모델은 정말 스윙을 이해하나? | 첫 모델은 **선수를 외우고 있었다.** 바꾸면 "이 선수"만 남는 구조를 찾아내 다시 설계 |
 | 콴 같은 컨택 타자도 어택 앵글을 올려야 하나? | **아니다.** 파워형은 타구 질 +11.8/°, 컨택형은 스윙당 +0.4 [−1.4, +1.9]. 유형별 규칙으로 바꿈 |
+| 이걸 구단이 실제로 쓰는 형태로 만들 수 있나? | 상대 타선 9명 × 우리 선발 3명 **시리즈 스카우팅 리포트**를 자동 생성 ([샘플 PDF](docs/sample_scouting_PIT_vs_NYY.pdf)). 검증된 코스 추천만 싣고, 검증 안 된 구종 순위는 게임이론 비율로 대체 |
 | MLB 투수는 게임이론(미니맥스)대로 던지나? | 리그 전체는 균형에 가깝다. **0-2 오프스피드만** 두 시즌 연속 패스트볼보다 0.74~1.07점 덜 내줌 |
 | 선수 임베딩(딥러닝)이 도움이 되나? | 헛스윙 AUC 0.787 → 0.792, LightGBM과 평균하면 0.797 → 앱의 스윙·헛스윙 확률에 적용. 하지만 **실점 순위**에 섞었을 때는 백테스트 정면 비교에서 차이가 없어 보류 |
 
-자세한 과정(무엇이 틀렸고 어떻게 알았는지)은 [문제 해결 사례집](docs/CASE_STUDY.md)에 있다.
+자세한 과정(무엇이 틀렸고 어떻게 알았는지)은 [문제 해결 사례집](docs/CASE_STUDY.md)에 있다 (사례 6개).
 
 ## 시스템 구조
 
@@ -53,10 +54,26 @@ flowchart TD
 | 🛠️ 투수 개선 | 주무기 분석 → 구종별 공 모양(수직·수평 무브, 구속) 목표 |
 | 🏏 타자 개선 | 배트 스피드·어택 앵글·컨택 포인트 목표 (타자 유형별 규칙) |
 | 🧬 선수 지도 | 임베딩으로 본 비슷한 선수, 2차원 지도 |
+| 📋 스카우팅 리포트 | 상대 팀·우리 선발을 고르면 타자당 A4 한 장짜리 공략 리포트 생성 → HTML 내려받기 (인쇄·PDF) |
 
 | 투수 개선 | 타자 개선 (콴) | 미니맥스 검증 |
 | --- | --- | --- |
 | ![](docs/images/pitcher_improvement.png) | ![](docs/images/batter_kwan.png) | ![](docs/images/minimax.png) |
+
+## 시리즈 스카우팅 리포트
+
+타자 한 명당 한 장: 핫존·콜드존, 구종 계열별 약점(리그 대비), **카운트 × 선발 투수별 게임이론 구종 비율과 목표 코스**, 수비 위치.
+
+| 표지 (시리즈 요약) | 타자 페이지 (후안 소토) |
+| --- | --- |
+| ![](docs/images/scouting_cover.png) | ![](docs/images/scouting_soto.png) |
+
+```bash
+python scouting.py --opp NYY --us PIT                       # 상대 = 양키스, 우리 = 피츠버그 선발 3명
+python scouting.py --opp LAD --pitchers Skenes Cole Sale    # 선발 직접 지정
+```
+
+만드는 과정에서 목표 코스의 절반이 "한가운데"로 나오는 문제를 찾았고, 한가운데와 가장자리의 차이(중앙값 100구당 0.12점)를 근거로 표시 규칙을 정했다 → [사례 6](docs/CASE_STUDY.md).
 
 ## 실행 방법
 
@@ -81,7 +98,7 @@ python pipeline.py
 
 | 종류 | 파일 |
 | --- | --- |
-| 앱 | `app.py` (화면), `analyst.py` (AI 분석관), `recommend.py`, `strategy.py`, `trajectory.py`, `animation.py`, `mechanics.py`, `batter_mech.py`, `embed.py`, `game.py` |
+| 앱 | `app.py` (화면), `analyst.py` (AI 분석관), `scouting.py` (스카우팅 리포트), `recommend.py`, `strategy.py`, `trajectory.py`, `animation.py`, `mechanics.py`, `batter_mech.py`, `embed.py`, `game.py` |
 | 학습 | `stuff_plus.py` (데이터 받기 + Stuff+), `build_*.py` (모델별) |
 | 검증 | `validate_release.py`, `validate_personal.py`, `backtest.py`, `backtest_ensemble.py`, `test_high_fastball.py`, `build_minimax.py` |
 | 검증 결과 | `val_*.csv` (앱의 "근거" 화면이 읽음), `results/*.txt` |

@@ -43,6 +43,9 @@ STEPS = [
     ("backtest", "코스 추천 2025 백테스트", [["backtest.py", "--loop"], ["backtest.py", "--report"]], "results/backtest_2025.txt"),
     ("ensemble", "앙상블(신경망+LightGBM) 추천 백테스트", [["backtest_ensemble.py"], ["backtest_ensemble.py", "--report"]],
      "val_ensemble_summary.csv"),
+    ("scouting", "스카우팅 리포트: 팀별 라인업·선발 표 + 샘플 리포트", [["scouting.py", "--teams"],
+     ["scouting.py", "--opp", "NYY", "--us", "PIT", "--out", "docs/sample_scouting_PIT_vs_NYY.html"]],
+     "docs/sample_scouting_PIT_vs_NYY.html"),
     ("high_fastball", "높은 패스트볼 × 타자 유형 검증", [["test_high_fastball.py", "--data", D25, "--split", "2025-07-01"]],
      "results/high_fastball_2025.txt"),
 ]
