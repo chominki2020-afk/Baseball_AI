@@ -1,0 +1,15 @@
+# 앱 실행
+streamlit==1.65.0
+plotly==7.1.0
+pandas==2.3.3
+numpy==2.2.6
+scikit-learn==1.7.2
+lightgbm==4.7.0
+matplotlib==3.10.9
+anthropic            # AI 분석관 (선택, API 키 필요)
+
+# 데이터 받기·학습 (pipeline.py)
+pybaseball==2.2.7
+shap==0.49.1
+scipy==1.15.3
+# torch              # build_embed.py만 필요 (선수 임베딩 학습). 앱은 numpy로 읽어서 필요 없음
