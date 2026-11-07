@@ -58,6 +58,12 @@ plt.rcParams["axes.unicode_minus"] = False
 
 st.set_page_config(page_title="야구 AI 전략 시스템", page_icon="⚾", layout="wide")
 
+# 새 환경(Streamlit Cloud 등)에서 모델 파일이 없으면 GitHub Release에서 한 번 받아 옴
+import bootstrap
+if bootstrap.missing():
+    with st.spinner("처음 실행이라 학습된 모델 파일(약 30MB)을 받는 중이에요... (1분 이내)"):
+        bootstrap.ensure_models(log=lambda *a: None)
+
 PITCH_KO = {"FF": "포심", "SI": "싱커", "FC": "커터", "SL": "슬라이더", "ST": "스위퍼",
             "CU": "커브", "KC": "너클커브", "SV": "슬러브", "CS": "슬로커브",
             "CH": "체인지업", "FS": "스플리터", "FO": "포크", "SC": "스크루볼"}
@@ -669,7 +675,7 @@ def mech_page():
     })
     tab = tab[r["usage"].values >= 0.02]
     pc = dict(min_value=0, max_value=100, format="%.0f")
-    st.dataframe(tab, hide_index=True, use_container_width=True, column_config={
+    st.dataframe(tab, hide_index=True, width="stretch", column_config={
         "구사율": st.column_config.NumberColumn(format="%.0f%%"),
         "구속(mph)": st.column_config.NumberColumn(format="%.1f"),
         "수직 무브(cm)": st.column_config.NumberColumn(format="%+.0f"),
@@ -701,7 +707,7 @@ def mech_page():
                       "추천 변화": "지금 그대로가 좋음" if none else shape_words(t, b_["d_ivb"], b_["d_arm"], b_["d_velo"]),
                       "헛스윙%p": 0.0 if none else b_["d"],
                       "다른 구종%p": 0.0 if none else b_.get("d_others", 0.0)})
-    st.dataframe(pd.DataFrame(srows), hide_index=True, use_container_width=True, column_config={
+    st.dataframe(pd.DataFrame(srows), hide_index=True, width="stretch", column_config={
         "구사율": st.column_config.NumberColumn(format="%.0f%%"),
         "지금 수직cm": st.column_config.NumberColumn(format="%+.0f"),
         "지금 가로cm(팔+)": st.column_config.NumberColumn(format="%+.0f"),
@@ -799,7 +805,7 @@ def mech_page():
         cc1 = st.container()
         cc2 = st.columns([2, 3])[0]
         with cc1:
-            st.dataframe(tt, hide_index=True, use_container_width=True, column_config={
+            st.dataframe(tt, hide_index=True, width="stretch", column_config={
                 "구사율": st.column_config.NumberColumn(format="%.0f%%"),
                 "실제 헛스윙%": st.column_config.NumberColumn(format="%.1f"),
                 "모델 현재": st.column_config.NumberColumn(format="%.1f", help="모델이 예측한 지금 릴리스의 헛스윙%"),
@@ -916,7 +922,7 @@ def mech_page():
                               "타점 15cm↑: 수직무브": d_up["ivb"] * 2.54, "타점 15cm↑: 가로무브": -d_up["hb"] * 2.54,
                               "팔 15cm 벌림: 수직무브": d_side["ivb"] * 2.54, "팔 15cm 벌림: 가로무브": -d_side["hb"] * 2.54,
                               "익스텐션 15cm↑: 구속": d_ext["velo"]})
-            st.dataframe(pd.DataFrame(rows_), hide_index=True, use_container_width=True,
+            st.dataframe(pd.DataFrame(rows_), hide_index=True, width="stretch",
                          column_config={c: st.column_config.NumberColumn(format="%+.1f") for c in rows_[0] if c != "구종"})
             st.caption("단위: cm (가로무브 +면 팔 쪽으로 더 휨), 구속 mph. 2024→2025 같은 투수·구종의 평균 변화와 "
                        "한 시즌 안 경기별 변화(구장 차이 제거)를 각각 분석해서 두 결과가 같은 방향일 때만 사용, 크기는 작은 쪽. "
@@ -1040,7 +1046,7 @@ def bat_page():
         rows_.append({"항목": lab, "값": f"{v:.1f}{u}", "설명": desc, "MLB 백분위": r[c + "_pct"]})
     cA, cB = st.columns([3, 2])
     with cA:
-        st.dataframe(pd.DataFrame(rows_), hide_index=True, use_container_width=True, column_config={
+        st.dataframe(pd.DataFrame(rows_), hide_index=True, width="stretch", column_config={
             "MLB 백분위": st.column_config.ProgressColumn(min_value=0, max_value=100, format="%.0f",
                                                        help="2025 시즌 200스윙 이상 타자 중 위치 (높을수록 값이 큼)")})
         st.caption("컨택 포인트는 '타자 몸 기준 몇 cm 앞'이라, 체격이 크고 팔이 긴 타자는 같은 타이밍이어도 더 앞으로 찍힐 수 있어요 "
@@ -1091,7 +1097,7 @@ def bat_page():
                 "바꾼 뒤(예상)": [f"{r['whiff'] * 100 + rec['d_miss']:.1f}%", f"{r['bip_rate'] * 100 + rec['d_bip']:.1f}%",
                                f"{r['xwcon'] + rec['d_xwcon'] / 1000:.3f}", f"{r['xw_sw'] + rec['d_xw_sw'] / 1000:.3f}"],
             })
-            st.dataframe(t, hide_index=True, use_container_width=True)
+            st.dataframe(t, hide_index=True, width="stretch")
             if rec["d_bs"]:
                 st.caption(f"배트 스피드 {r['bat_speed']:.1f} → {rec['new_bs']:.1f}mph, 스윙 길이 "
                            f"{r['swing_length'] * 30.48:.0f} → {rec['new_len'] * 30.48:.0f}cm "
@@ -1181,7 +1187,7 @@ def bat_page():
             "스윙당 실제": [f"{tb.loc[g, 'xw_sw']:+.1f}" for g in order],
             "스윙당 모델": [f"{tf.loc[g, 'xw_sw']:+.1f}" for g in order],
         })
-        st.dataframe(show, hide_index=True, use_container_width=True)
+        st.dataframe(show, hide_index=True, width="stretch")
         st.caption("배트 스피드 기준 3등분, 각 약 95명. 모델은 헛스윙 쪽은 잘 맞히고, 유형별 차이 방향(파워형일수록 타구 질 이득이 큼)도 "
                    "잡지만 파워형의 타구 질 이득은 실제(+12)보다 작게(+5) 봐요. 그래서 유형별 기준(⭐)을 따로 두었어요.")
 
@@ -1256,7 +1262,7 @@ def emb_page():
         fig.update_layout(xaxis_title=f"축 1 ({var[0]:.0%}) — {EM.axis_label(axes[0])}",
                           yaxis_title=f"축 2 ({var[1]:.0%}) — {EM.axis_label(axes[1])}",
                           coloraxis_colorbar_title=EM.STAT_KO.get(color, color), margin=dict(l=10, r=10, t=10, b=10))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     except ImportError:
         st.scatter_chart(df, x="pc1", y="pc2", color=color)
     st.caption("16차원을 2차원으로 눌러 그린 그림이라 실제 거리와 조금 달라요. 축 이름은 그 축과 가장 상관이 큰 기본 지표로 자동으로 붙였어요. "
@@ -1271,7 +1277,7 @@ def emb_page():
                 cols[c] = EM.STAT_KO[c]
         s = s[list(cols)].rename(columns=cols)
         me = df[df["id"] == pid].iloc[0]
-        st.dataframe(s, hide_index=True, use_container_width=True, column_config={
+        st.dataframe(s, hide_index=True, width="stretch", column_config={
             "유사도": st.column_config.ProgressColumn(min_value=0, max_value=1, format="%.2f"),
             **{EM.STAT_KO[c]: st.column_config.NumberColumn(format="%.3f" if c != "velo" else "%.1f")
                for c in ["whiff", "chase", "ev", "rv100", "velo", "fb_share"] if c in cols}})
@@ -1284,7 +1290,7 @@ def emb_page():
         order = [b for b in ["전체", "2024 표본 0 (신인)", "2024 1~500구", "2024 500~1500구", "2024 1500구+"] if b in q.index]
         cols_ = [c for c in ["LightGBM+프로필", "신경망+임베딩", "신경망(임베딩 끔)", "둘 평균"] if c in q.columns]
         t = q.loc[order, cols_].reset_index().rename(columns={"bucket": "타자 (2024 표본)"})
-        st.dataframe(t, hide_index=True, use_container_width=True,
+        st.dataframe(t, hide_index=True, width="stretch",
                      column_config={c: st.column_config.NumberColumn(format="%.4f") for c in cols_})
         st.markdown("""
 헛스윙 예측 AUC (높을수록 정확, 2025 시즌 70만 구로 평가).
@@ -1321,7 +1327,7 @@ def minimax_section(pid, pname):
                        "변화구 − 패스트볼": f"{L[yr]['g1'][0]:+.2f} [{L[yr]['g1'][1][0]:+.2f}, {L[yr]['g1'][1][1]:+.2f}]",
                        "오프스피드 − 패스트볼": f"{L[yr]['g2'][0]:+.2f} [{L[yr]['g2'][1][0]:+.2f}, {L[yr]['g2'][1][1]:+.2f}]"}
                       for yr in (2024, 2025)])
-    st.dataframe(t, hide_index=True, use_container_width=True)
+    st.dataframe(t, hide_index=True, width="stretch")
     st.markdown("""
 - 전체로 보면 차이가 **100구당 0.1~0.3점**으로 아주 작아요 → MLB 투수들은 전체적으로 **미니맥스에 꽤 가깝게** 던져요.
   (2000년대 데이터로는 '패스트볼을 너무 많이 던진다'는 연구(Kovash & Levitt, 2009)가 있었는데, 지금은 오히려 변화구 쪽이 아주 약간 더 내줘요.)
@@ -1414,7 +1420,7 @@ def game_page():
     })
     g1, g2 = st.columns([3, 2])
     with g1:
-        st.dataframe(dd, hide_index=True, use_container_width=True, column_config={
+        st.dataframe(dd, hide_index=True, width="stretch", column_config={
             "평소 비율": st.column_config.NumberColumn(format="%.0f%%"),
             "추천 비율": st.column_config.ProgressColumn(min_value=0, max_value=100, format="%.0f%%"),
             "차이(%p)": st.column_config.NumberColumn(format="%+.0f"),
@@ -1448,7 +1454,7 @@ def game_page():
                       "실점 가치 (100구당)": f"{b['resid'][0] / 10:+.2f} [{b['resid'][1][0] / 10:+.2f}, {b['resid'][1][1] / 10:+.2f}]"})
         st.markdown("**① 타자는 정말 노리고 들어오나?** — 한 카운트에서 어떤 구종을 평소보다 10%p 더 던질 때, 그 구종에 대한 반응이 "
                     "모델 예상보다 얼마나 달라지나 (같은 투수·같은 구종끼리 비교, 투수 단위 95% 구간)")
-        st.dataframe(pd.DataFrame(t), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(t), hide_index=True, width="stretch")
         st.markdown("""
 - **헛스윙은 두 시즌 모두 줄어요** → 그 카운트에 그 공이 올 걸 알면 타자가 더 잘 맞혀요. 노리고 들어온다는 증거예요.
   (투수는 원래 잘 통하는 공을 더 던지기 때문에 이 효과를 오히려 작게 보이게 만드는데도 나타났어요.)
@@ -1557,7 +1563,7 @@ def ai_page():
         st.markdown("**이런 걸 물어볼 수 있어요**")
         cols = st.columns(2)
         for i, q in enumerate(AI_EXAMPLES):
-            if cols[i % 2].button(q, key=f"ai_ex{i}", use_container_width=True):
+            if cols[i % 2].button(q, key=f"ai_ex{i}", width="stretch"):
                 st.session_state["ai_pending"] = q
                 st.rerun()
     for v in st.session_state["ai_view"]:

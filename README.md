@@ -80,16 +80,17 @@ python scouting.py --opp LAD --pitchers Skenes Cole Sale    # 선발 직접 지�
 ## 실행 방법
 
 ```bash
+# 방법 A: 바로 실행 (추천) — 모델 파일이 없으면 처음 켤 때 Releases에서 자동으로 받음 (약 30MB)
 pip install -r requirements.txt
-
-# 방법 A: 학습된 모델 받아서 바로 실행 (추천)
-#   Releases에서 baseball-ai-models.zip을 받아 이 폴더에 압축 풀기
 streamlit run app.py          # Windows: run_app.bat 더블클릭
 
 # 방법 B: 데이터 받기부터 학습·검증까지 직접 (몇 시간, 데이터 약 850MB)
+pip install -r requirements-pipeline.txt
 python pipeline.py --list     # 단계 목록
 python pipeline.py
 ```
+
+- 온라인 배포(Streamlit Cloud): 이 저장소를 그대로 연결하면 됨. `packages.txt`가 리눅스 한글 글꼴을 설치하고, `bootstrap.py`가 모델을 받는다.
 
 - AI 분석관을 쓰려면 `secrets.toml.example`을 `.streamlit/secrets.toml`로 복사하고 Anthropic API 키를 넣는다. 이 파일은 `.gitignore`에 들어 있다.
 - 화면 테스트: `python tests/test_app_defense.py` 등 (Streamlit AppTest)
@@ -104,7 +105,7 @@ python pipeline.py
 | 학습 | `stuff_plus.py` (데이터 받기 + Stuff+), `build_*.py` (모델별) |
 | 검증 | `validate_release.py`, `validate_personal.py`, `backtest.py`, `backtest_ensemble.py`, `build_command.py`, `backtest_command.py`, `build_hier.py`, `test_high_fastball.py`, `build_minimax.py` |
 | 검증 결과 | `val_*.csv` (앱의 "근거" 화면이 읽음), `results/*.txt` |
-| 순서 | `pipeline.py` |
+| 순서·배포 | `pipeline.py`, `bootstrap.py` (모델 자동 다운로드), `packages.txt` (클라우드 한글 글꼴) |
 
 ## 데이터와 라이선스
 
