@@ -3,6 +3,8 @@
 > MLB Statcast 2시즌(약 140만 구)으로 만든 볼배합 추천, 투수·타자 개선, 게임이론 분석 도구.
 > 모든 기능은 **2024로 학습하고 2025로 검증**했고, 검증에서 틀린 기능은 고치거나 버렸다.
 
+**▶ 온라인 데모: [baseball-ai-cho.streamlit.app](https://baseball-ai-cho.streamlit.app)** (설치 없이 브라우저에서 바로 실행. 오래 안 쓰면 잠들어 있어서 첫 접속은 1분쯤 걸릴 수 있음)
+
 ![앱 화면: 스킨스 vs 저지 3-2 볼배합 추천](docs/images/app_defense.png)
 
 ## 한눈에 보기
@@ -33,7 +35,7 @@ flowchart TD
     M2 --> G
     M3 --> G
     M4 --> G
-    G --> A["Streamlit 앱 · 8개 모드"]
+    G --> A["Streamlit 앱 · 9개 모드"]
     G --> AI["AI 분석관<br/>Claude tool use · 도구 11개"]
 ```
 
