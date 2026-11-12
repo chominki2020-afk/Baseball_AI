@@ -50,7 +50,7 @@ for _m in (R, ST, T, AN, MC, BM, AI, EM, GM):
 
 # 그래프 한글 폰트 (윈도우: 맑은 고딕, 맥: 애플고딕)
 _fonts = {f.name for f in font_manager.fontManager.ttflist}
-for _f in ["Malgun Gothic", "AppleGothic", "NanumGothic", "Noto Sans CJK KR"]:
+for _f in ["Malgun Gothic", "AppleGothic", "NanumGothic", "Noto Sans CJK KR", "Noto Sans CJK JP"]:   # JP 글꼴도 한글 포함
     if _f in _fonts:
         plt.rcParams["font.family"] = _f
         break
