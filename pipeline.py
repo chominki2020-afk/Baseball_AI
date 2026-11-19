@@ -51,6 +51,9 @@ STEPS = [
     ("scouting", "스카우팅 리포트: 팀별 라인업·선발 표 + 샘플 리포트", [["scouting.py", "--teams"],
      ["scouting.py", "--opp", "NYY", "--us", "PIT", "--out", "docs/sample_scouting_PIT_vs_NYY.html"]],
      "docs/sample_scouting_PIT_vs_NYY.html"),
+    ("swing_hier", "스윙 단위 + 타자 효과 what-if 검증 (사례 9, 앱에는 안 씀)", [["build_swing_hier.py", "cache"],
+     ["build_swing_hier.py", "fit"], ["build_swing_hier.py", "val"], ["validate_swing_ens.py"], ["validate_swing_holdout.py"]],
+     "val_swing_hier_summary.csv"),
     ("high_fastball", "높은 패스트볼 × 타자 유형 검증", [["test_high_fastball.py", "--data", D25, "--split", "2025-07-01"]],
      "results/high_fastball_2025.txt"),
 ]
