@@ -13,6 +13,7 @@
 """
 import argparse
 import html
+import json
 import os
 import pickle
 import time
@@ -73,21 +74,43 @@ def top_starters(pa, team, M, k=3):
     return [int(p) for p in st_.index if p in known][:k]
 
 
+def rotation(pa, team):
+    """그 팀에서 선발로 나온 투수 전부와 선발 경기 수 (많은 순) — 앱에서 우리 팀 선발을 고를 때 목록"""
+    t = pa[pa["fld_team"] == team].sort_values(["game_pk", "at_bat_number"])
+    st_ = t.drop_duplicates("game_pk")["pitcher"].value_counts()
+    return [(int(p), int(n)) for p, n in st_.items()]
+
+
 TEAMS_FILE = "scouting_teams.pkl"
+# 저장소에 함께 올리는 팀 표 (선수 ID·경기 수만 있는 작은 파일이라 원본 데이터 재배포가 아님) → 배포 앱도 바로 사용
+TEAMS_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "scouting_teams.json")
 
 
 def team_table(M, path=DATA):
-    """30개 팀의 대표 라인업·선발 3명 (원본 CSV 없이도 앱에서 리포트를 만들 수 있게 저장)"""
+    """30개 팀의 대표 라인업·선발 3명·선발로 나온 투수 전체 (원본 CSV 없이도 앱에서 리포트를 만들 수 있게 저장)"""
     pa = team_games(path)
     teams = sorted(set(pa["bat_team"]))
-    return {t: {"lineup": common_lineup(pa, t, M), "starters": top_starters(pa, t, M)} for t in teams}
+    return {t: {"lineup": common_lineup(pa, t, M), "starters": top_starters(pa, t, M), "rotation": rotation(pa, t)}
+            for t in teams}
+
+
+def save_teams(T):
+    os.makedirs(os.path.dirname(TEAMS_JSON), exist_ok=True)
+    with open(TEAMS_JSON, "w", encoding="utf-8") as f:
+        json.dump({t: {k: [list(x) if isinstance(x, tuple) else x for x in v] for k, v in d.items()} for t, d in T.items()},
+                  f, ensure_ascii=False, separators=(",", ":"))
+    pickle.dump(T, open(TEAMS_FILE, "wb"))
 
 
 def load_teams(M):
+    if os.path.exists(TEAMS_JSON):
+        J = json.load(open(TEAMS_JSON, encoding="utf-8"))
+        return {t: {"lineup": [tuple(x) for x in d["lineup"]], "starters": d["starters"],
+                    "rotation": [tuple(x) for x in d.get("rotation", [])]} for t, d in J.items()}
     if os.path.exists(TEAMS_FILE):
         return pickle.load(open(TEAMS_FILE, "rb"))
     T = team_table(M)
-    pickle.dump(T, open(TEAMS_FILE, "wb"))
+    save_teams(T)
     return T
 
 
@@ -492,15 +515,15 @@ def load_models():
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--opp", help="상대 팀 약자 (예: NYY, LAD)")
-    ap.add_argument("--teams", action="store_true", help="팀별 라인업·선발 표만 다시 만들기 (scouting_teams.pkl)")
+    ap.add_argument("--teams", action="store_true", help="팀별 라인업·선발 표만 다시 만들기 (data/scouting_teams.json)")
     ap.add_argument("--us", default="", help="우리 팀 약자 → 그 팀 선발 상위 3명 자동 선택")
     ap.add_argument("--pitchers", nargs="*", default=[], help="선발 투수 이름 (성으로 검색)")
     ap.add_argument("--out", default="")
     a = ap.parse_args()
     if a.teams:
         T = team_table(pickle.load(open("matchup_model.pkl", "rb")))
-        pickle.dump(T, open(TEAMS_FILE, "wb"))
-        raise SystemExit(f"저장: {TEAMS_FILE} ({len(T)}개 팀)")
+        save_teams(T)
+        raise SystemExit(f"저장: {TEAMS_JSON}, {TEAMS_FILE} ({len(T)}개 팀)")
     if not a.opp:
         ap.error("--opp 가 필요해요 (예: --opp NYY --us PIT)")
     M, S, Bm, BS, EMB = load_models()

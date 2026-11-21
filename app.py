@@ -1628,7 +1628,14 @@ def rep_page():
         opp = st.selectbox("상대 팀 (타선)", teams, index=teams.index("NYY") if "NYY" in teams else 0, key="r_opp")
         us = st.selectbox("우리 팀 (선발)", teams, index=teams.index("PIT") if "PIT" in teams else 0, key="r_us")
         default = [pn[p] for p in T[us]["starters"] if p in pn]
-        picks = st.multiselect("선발 투수 (바꿔도 됨)", sorted(pitcher_names), default=default, max_selections=4, key="r_p")
+        rot = [(pn[p], n) for p, n in T[us].get("rotation", []) if p in pn]      # 그 팀에서 선발로 나온 투수 (많은 순)
+        n_start = dict(rot)
+        anyone = st.checkbox("다른 팀 투수도 고르기", value=not rot, key="r_any",
+                             help="트레이드·영입 후보처럼 우리 팀에서 던진 적 없는 투수로 리포트를 만들 때")
+        opts = sorted(pitcher_names) if anyone else [n for n, _ in rot]
+        picks = st.multiselect("선발 투수 (2024 이 팀 선발 등판 순, 바꿔도 됨)", opts,
+                               default=[d for d in default if d in opts], max_selections=4, key=f"r_p_{us}_{anyone}",
+                               format_func=lambda n: f"{n} · 선발 {n_start[n]}경기" if n in n_start else n)
     lineup = T[opp]["lineup"]
     st.markdown(f"## 📋 {us} 투수진 vs {opp} 타선")
     st.caption("상대 타선 = 2024 시즌 가장 자주 나온 선발 라인업. 타자마다 카운트(초구·유리·불리·풀카운트) × 우리 선발별로 "
