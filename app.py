@@ -1613,9 +1613,15 @@ REPM = "📋 스카우팅 리포트"
 
 
 @st.cache_resource
-def load_teams():
+def _load_teams(stamp):
     import scouting as SC
     return SC.load_teams(M)
+
+
+def load_teams():
+    """팀 표 파일이 바뀌면(새로 push 등) 캐시도 새로 읽음 — 앱을 재시작하지 않아도 반영되게"""
+    import scouting as SC
+    return _load_teams(os.path.getmtime(SC.TEAMS_JSON) if os.path.exists(SC.TEAMS_JSON) else 0)
 
 
 def rep_page():
@@ -1630,8 +1636,11 @@ def rep_page():
         default = [pn[p] for p in T[us]["starters"] if p in pn]
         rot = [(pn[p], n) for p, n in T[us].get("rotation", []) if p in pn]      # 그 팀에서 선발로 나온 투수 (많은 순)
         n_start = dict(rot)
-        anyone = st.checkbox("다른 팀 투수도 고르기", value=not rot, key="r_any",
-                             help="트레이드·영입 후보처럼 우리 팀에서 던진 적 없는 투수로 리포트를 만들 때")
+        if rot:
+            anyone = st.checkbox("다른 팀 투수도 고르기", value=False, key="r_any",
+                                 help="트레이드·영입 후보처럼 우리 팀에서 던진 적 없는 투수로 리포트를 만들 때")
+        else:                                   # 팀별 선발 기록이 없으면 전체 투수에서 고르기
+            anyone = True
         opts = sorted(pitcher_names) if anyone else [n for n, _ in rot]
         picks = st.multiselect("선발 투수 (2024 이 팀 선발 등판 순, 바꿔도 됨)", opts,
                                default=[d for d in default if d in opts], max_selections=4, key=f"r_p_{us}_{anyone}",
