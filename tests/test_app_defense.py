@@ -11,6 +11,6 @@ at.run()
 print("수비팀 exc", [e.value for e in at.exception])
 cards = [m.value for m in at.markdown if "헛스윙" in m.value and "스윙" in m.value]
 print("추천 카드", len(cards), cards[0][:160] if cards else "")
-for mode in ["♟️ 게임이론 볼배합", "⚔️ 공격팀"]:
-    at.sidebar.radio[0].set_value(mode).run()
+for mode in ["♟️ 게임이론", "⚔️ 공격 · 노림수"]:          # 매치업 분석 안의 세부 화면
+    at.segmented_control(key="sub_match").set_value(mode).run()
     print(mode, "exc", [e.value for e in at.exception])

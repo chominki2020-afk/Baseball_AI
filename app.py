@@ -939,7 +939,7 @@ def mech_page():
 - **헛스윙만** 봐요. 맞았을 때 타구 질(장타 허용)은 반영하지 않았어요.
 - 데이터에서 찾은 **상관관계**지 메카닉 코칭이 아니에요. 몸 상태, 부상 위험, 제구 변화는 고려하지 않아요.
 """)
-    st.caption("같은 값을 🎯 투구 궤적 모드의 '🔧 릴리스 포인트 바꿔 보기'에 넣으면 궤적이 어떻게 달라지는지 3D로 볼 수 있어요.")
+    st.caption("같은 값을 ⚾ 매치업 분석 → 🎯 투구 궤적의 '🔧 릴리스 포인트 바꿔 보기'에 넣으면 궤적이 어떻게 달라지는지 3D로 볼 수 있어요.")
 
 
 # ---------------------------------------------------------------- 🏏 타자 개선
@@ -1378,18 +1378,36 @@ def minimax_section(pid, pname):
                "— 투수들이 스스로 균형 쪽으로 조정하는 모습이에요.")
 
 
+def sticky_select(where, label, options, key, default):
+    """다른 화면에 갔다 와도 고른 값이 남도록 (위젯이 안 그려진 동안 지워지는 값을 따로 보관)"""
+    keep = "_keep_" + key
+    v = st.session_state.get(keep, default)
+    val = where.selectbox(label, options, index=options.index(v) if v in options else 0, key=key)
+    st.session_state[keep] = val
+    return val
+
+
+def matchup_pick():
+    """매치업 분석의 세부 화면(수비·공격·게임이론·투구 궤적)이 같은 투수·타자·카운트를 쓰도록 공유"""
+    pname = sticky_select(st, "투수", list(pitcher_names), "m_p", "Skenes, Paul")
+    bname = sticky_select(st, "타자", batter_list, "m_b", "Judge, Aaron")
+    return pname, bname
+
+
+def count_pick():
+    c1, c2, c3 = st.columns(3)
+    return (sticky_select(c1, "볼", [0, 1, 2, 3], "m_ball", 0), sticky_select(c2, "스트", [0, 1, 2], "m_str", 0),
+            sticky_select(c3, "아웃", [0, 1, 2], "m_out", 0))
+
+
 def game_page():
     gmix, gexp = load_game()
     beta0 = float(gmix["beta"]) if gmix else GM.DEFAULT_BETA
-    pnames, bnames = sorted(pitcher_names), sorted(batters)
     with st.sidebar:
-        st.header("♟️ 게임이론 볼배합")
-        pname = st.selectbox("투수", pnames, index=pnames.index("Skenes, Paul") if "Skenes, Paul" in pnames else 0, key="g_p")
-        bname = st.selectbox("타자", bnames, index=bnames.index("Judge, Aaron") if "Judge, Aaron" in bnames else 0, key="g_b")
-        c1, c2 = st.columns(2)
-        balls = c1.selectbox("볼", [0, 1, 2, 3], index=1, key="g_ball")
-        strikes = c2.selectbox("스트라이크", [0, 1, 2], index=1, key="g_str")
-        outs = st.selectbox("아웃", [0, 1, 2], key="g_out")
+        st.header("⚾ 매치업 설정")
+        pname, bname = matchup_pick()
+        st.subheader("카운트 · 상황")
+        balls, strikes, outs = count_pick()
         runners = st.multiselect("주자", [1, 2, 3], format_func=lambda b: f"{b}루", key="g_run")
         beta = st.slider("타자가 얼마나 노리고 들어오나 (β)", 0.0, 60.0, beta0, 1.0,
                          help=f"0 = 타자가 투수 성향을 전혀 안 읽음 → 제일 좋은 공만 던지는 게 최선. "
@@ -1675,10 +1693,28 @@ def rep_page():
             "게임이론 비율로만 보여 줘요. 스윙·헛스윙 확률은 LightGBM + 선수 임베딩 신경망 평균이에요.")
 
 
-# ---------------------------------------------------------------- 사이드바
+# ---------------------------------------------------------------- 사이드바: 메뉴 4개 → 화면 안에서 세부 화면 고르기
+MATCH, DEV = "⚾ 매치업 분석", "🛠️ 선수 개선"
+TOP_HELP = {MATCH: "투수 vs 타자 한 타석: 볼배합 · 노림수 · 게임이론 · 3D 투구 궤적",
+            DEV: "선수 한 명을 더 좋게: 투수 공 모양 · 타자 스윙 목표 · 비슷한 선수",
+            REPM: "상대 팀과의 시리즈 대비 리포트 (PDF로 저장)",
+            AIM: "궁금한 걸 물으면 위 모델들을 써서 답해 줘요 (API 키 필요)"}
+MATCH_SUB = {"🛡️ 수비 · 볼배합": "🛡️ 수비팀", "⚔️ 공격 · 노림수": "⚔️ 공격팀", "♟️ 게임이론": GAMEM,
+             "🎯 투구 궤적": "🎯 투구 궤적"}
+DEV_SUB = {"🛠️ 투수": MECH, "🏏 타자": BAT, "🧬 비슷한 선수 찾기": EMBM}
+
 with st.sidebar:
-    mode = st.radio("모드", [AIM, "🛡️ 수비팀", "⚔️ 공격팀", GAMEM, "🎯 투구 궤적", MECH, BAT, EMBM, REPM], index=1, horizontal=True,
-                    label_visibility="collapsed")
+    top = st.radio("메뉴", [MATCH, DEV, REPM, AIM], index=0, key="top_mode", label_visibility="collapsed")
+    st.caption(TOP_HELP[top])
+
+
+def sub_pick(opts, key):
+    first = next(iter(opts))
+    v = st.segmented_control("화면", list(opts), default=first, key=key, label_visibility="collapsed")
+    return opts[v or first]                       # 같은 버튼을 다시 눌러 선택이 풀려도 첫 화면으로
+
+
+mode = sub_pick(MATCH_SUB, "sub_match") if top == MATCH else sub_pick(DEV_SUB, "sub_dev") if top == DEV else top
 
 if mode == MECH:
     mech_page()
@@ -1701,10 +1737,7 @@ if mode == REPM:
 
 with st.sidebar:
     st.header("⚾ 매치업 설정")
-    pname = st.selectbox("투수", list(pitcher_names), index=list(pitcher_names).index("Skenes, Paul")
-                         if "Skenes, Paul" in pitcher_names else 0)
-    bname = st.selectbox("타자", batter_list, index=batter_list.index("Judge, Aaron")
-                         if "Judge, Aaron" in batter_list else 0)
+    pname, bname = matchup_pick()
     pid, bid = pitcher_names[pname], batters[bname]
     auto_stand = M["batter_stand"].get(bid, "R")
     stand = st.radio("타석", ["R", "L"], index=0 if auto_stand == "R" else 1, horizontal=True,
@@ -1714,10 +1747,7 @@ with st.sidebar:
 
     if mode != "🎯 투구 궤적":
         st.subheader("카운트 · 상황")
-        c1, c2, c3 = st.columns(3)
-        balls = c1.selectbox("볼", [0, 1, 2, 3])
-        strikes = c2.selectbox("스트", [0, 1, 2])
-        outs = c3.selectbox("아웃", [0, 1, 2])
+        balls, strikes, outs = count_pick()
         b1, b2, b3 = st.columns(3)
         r1, r2, r3 = b1.checkbox("1루"), b2.checkbox("2루"), b3.checkbox("3루")
         sit = (outs, int(r1), int(r2), int(r3))
